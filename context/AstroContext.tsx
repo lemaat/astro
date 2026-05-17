@@ -10,6 +10,7 @@ export interface ChildProfile {
   parentEmail: string;
   difficulty: Difficulty;
   language: Language;
+  passions: string[];
 }
 
 export interface ActivityScore {
@@ -25,6 +26,7 @@ interface AstroContextType {
   scores: ActivityScore[];
   setProfile: (p: Partial<ChildProfile>) => void;
   setLanguage: (lang: Language) => void;
+  setPassions: (passions: string[]) => void;
   completeActivity: (id: "drawing" | "logic" | "storytelling", ability: number, engagement: number, feedback: string) => void;
 }
 
@@ -37,6 +39,7 @@ export const AstroProvider = ({ children }: { children: React.ReactNode }) => {
     parentEmail: "",
     difficulty: "easy",
     language: "fr",
+    passions: [],
   });
 
   const [scores, setScores] = useState<ActivityScore[]>([
@@ -59,6 +62,7 @@ export const AstroProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const setLanguage = (language: Language) => setProfileState(prev => ({ ...prev, language }));
+  const setPassions = (passions: string[]) => setProfileState(prev => ({ ...prev, passions }));
 
   const completeActivity = (id: string, ability: number, engagement: number, feedback: string) => {
     setScores(prev => prev.map(s =>
@@ -68,7 +72,7 @@ export const AstroProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Also expose useProfile alias for the storytelling page
   return (
-    <AstroContext.Provider value={{ profile, scores, setProfile, setLanguage, completeActivity }}>
+    <AstroContext.Provider value={{ profile, scores, setProfile, setLanguage, setPassions, completeActivity }}>
       <div dir={profile.language === "ar" ? "rtl" : "ltr"}>{children}</div>
     </AstroContext.Provider>
   );

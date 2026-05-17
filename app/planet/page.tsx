@@ -314,24 +314,27 @@ export default function PlanetHub() {
     >
       {/* === Twinkling stars === */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        {[...Array(120)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute bg-white rounded-full"
-            style={{
-              width: Math.random() * 3 + 1 + "px",
-              height: Math.random() * 3 + 1 + "px",
-              top: Math.random() * 100 + "%",
-              left: Math.random() * 100 + "%",
-            }}
-            animate={{ opacity: [0.2, 1, 0.2] }}
-            transition={{
-              duration: Math.random() * 3 + 2,
-              repeat: Infinity,
-              delay: Math.random() * 3,
-            }}
-          />
-        ))}
+        {[...Array(120)].map((_, i) => {
+          const r = (s: number) => { const x = Math.sin(s) * 10000; return parseFloat((x - Math.floor(x)).toFixed(4)); };
+          return (
+            <motion.div
+              key={i}
+              className="absolute bg-white rounded-full"
+              style={{
+                width: (r(i) * 3 + 1).toFixed(2) + "px",
+                height: (r(i + 120) * 3 + 1).toFixed(2) + "px",
+                top: (r(i + 240) * 100).toFixed(2) + "%",
+                left: (r(i + 360) * 100).toFixed(2) + "%",
+              }}
+              animate={{ opacity: [0.2, 1, 0.2] }}
+              transition={{
+                duration: r(i + 480) * 3 + 2,
+                repeat: Infinity,
+                delay: r(i + 600) * 3,
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* === Nebula clouds === */}

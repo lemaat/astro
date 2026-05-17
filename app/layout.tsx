@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AstroProvider } from "@/context/AstroContext";
+import AstrobotChat from "@/components/AstrobotChat";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AstroProvider>{children}</AstroProvider>
+        <AstroProvider>
+          {children}
+          <AstrobotChat />
+        </AstroProvider>
       </body>
     </html>
   );
