@@ -6,8 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Eraser, Undo, Trash2, CheckCircle, Palette } from "lucide-react";
-import Astrobot from "@/components/Astrobot"; // Assuming we keep the component in a shared folder
-import { Eraser, Undo, Trash2 } from "lucide-react";
 import Astrobot from "@/components/Astrobot";
 import { useAstro } from "@/context/AstroContext";
 import { useRouter } from "next/navigation";
@@ -143,21 +141,24 @@ export default function DrawingPage() {
       }}
     >
       {/* Starfield */}
-      {[...Array(30)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute rounded-full bg-white"
-          style={{
-            width: Math.random() * 3 + 1,
-            height: Math.random() * 3 + 1,
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-            opacity: Math.random() * 0.6 + 0.2,
-          }}
-          animate={{ opacity: [0.2, 0.9, 0.2] }}
-          transition={{ duration: Math.random() * 3 + 2, repeat: Infinity, delay: Math.random() * 3 }}
-        />
-      ))}
+      {[...Array(30)].map((_, i) => {
+        const r = (s: number) => { const x = Math.sin(s) * 10000; return parseFloat((x - Math.floor(x)).toFixed(4)); };
+        return (
+          <motion.div
+            key={i}
+            className="absolute rounded-full bg-white"
+            style={{
+              width: (r(i) * 3 + 1).toFixed(2) + "px",
+              height: (r(i + 30) * 3 + 1).toFixed(2) + "px",
+              top: (r(i + 60) * 100).toFixed(2) + "%",
+              left: (r(i + 90) * 100).toFixed(2) + "%",
+              opacity: (r(i + 120) * 0.6 + 0.2).toFixed(2),
+            }}
+            animate={{ opacity: [0.2, 0.9, 0.2] }}
+            transition={{ duration: r(i + 150) * 3 + 2, repeat: Infinity, delay: r(i + 180) * 3 }}
+          />
+        );
+      })}
 
       {/* Header */}
       <header className="relative z-10 flex justify-between items-center px-6 py-4">
