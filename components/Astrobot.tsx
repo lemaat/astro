@@ -7,6 +7,7 @@ import { useEffect, useState, useRef } from "react";
 export type AstrobotPosition =
   | "center" | "bottom-left" | "bottom-right" | "right-side" | "inline";
 export type AstrobotSize = "sm" | "md" | "lg" | "xl";
+export type AstrobotMood = "happy" | "thinking";
 
 interface AstrobotProps {
   message?: string;
@@ -15,6 +16,7 @@ interface AstrobotProps {
   size?: AstrobotSize;
   speak?: boolean;
   showBubble?: boolean;
+  mood?: AstrobotMood;
   onClick?: () => void;
 }
 
@@ -40,6 +42,7 @@ export default function Astrobot({
   size = "md",
   speak = false,
   showBubble = true,
+  mood = "happy",
   onClick,
 }: AstrobotProps) {
   const [bubbleVisible, setBubbleVisible] = useState(false);
@@ -111,7 +114,13 @@ export default function Astrobot({
         className={onClick ? "cursor-pointer" : ""}
         whileHover={onClick ? { scale: 1.05 } : undefined}
         whileTap={onClick ? { scale: 0.95 } : undefined}
-        style={{ width: px, height: px }}
+        animate={mood === "thinking" ? { scale: [1, 1.04, 1] } : { scale: 1 }}
+        transition={mood === "thinking" ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" } : undefined}
+        style={{
+          width: px,
+          height: px,
+          filter: mood === "thinking" ? "saturate(0.4) brightness(0.9)" : undefined,
+        }}
       >
         <DotLottieReact
           src="https://lottie.host/cd06b6df-676e-4463-9ccc-8a5e3aa0ac05/lvxA9Iqc43.lottie"

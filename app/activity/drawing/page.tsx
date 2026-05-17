@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Eraser, Undo, Trash2, CheckCircle, Palette } from "lucide-react";
-import Astraubot from "@/components/Astraubot"; // Assuming we keep the component in a shared folder
+import Astrobot from "@/components/Astrobot"; // Assuming we keep the component in a shared folder
 
 // Types
 type Language = "fr" | "ar";
@@ -216,7 +216,7 @@ export default function DrawingPage() {
                   <p className="text-xl font-bold leading-relaxed">{t[lang].instruction}</p>
                   <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-white border-b-4 border-r-4 border-[#6B4EE6] rotate-45" />
                 </div>
-                <Astraubot size={250} />
+                <Astrobot size="lg"/>
               </motion.div>
             ) : (
               <motion.div 

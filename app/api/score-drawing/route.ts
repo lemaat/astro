@@ -1,3 +1,4 @@
+//app\api\score-drawing\route.ts
 import { Anthropic } from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -55,7 +56,13 @@ export async function POST(req: Request) {
       ],
     });
 
-    const result = JSON.parse(message.content[0].text);
+    const contentBlock = message.content[0];
+
+    if (contentBlock.type !== "text") {
+      throw new Error("Response is not text");
+    }
+
+    const result = JSON.parse(contentBlock.text);
     return NextResponse.json(result);
   } catch (error) {
     console.error("AI Scoring Error:", error);
