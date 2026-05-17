@@ -7,12 +7,11 @@ import { LOGIC_PUZZLES, LogicPuzzle } from "./puzzles";
 import Astraubot from "@/components/Astrobot";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-
-// Mocking Context - in production this comes from your ChildProfileContext
-const mockProfile = { name: "Leo", age: 7, difficulty: "easy" as const, language: "fr" as const };
+import { useAstro } from "@/context/AstroContext";
 
 export default function LogicActivity() {
   const router = useRouter();
+  const { profile, completeActivity } = useAstro();
   const [puzzle, setPuzzle] = useState<LogicPuzzle | null>(null);
   const [timeLeft, setTimeLeft] = useState(180);
   const [status, setStatus] = useState<"intro" | "playing" | "success" | "timeout">("intro");
@@ -27,22 +26,22 @@ export default function LogicActivity() {
       timer: "Temps restant",
       academy: "ACADÉMIE ALIEN",
       back: "Retour au Hub",
-      intro: `Bienvenue à l'Académie Alien, ${mockProfile.name} ! Regarde bien et trouve la réponse. Tu as 3 minutes, mais pas de stress, amuse-toi bien !`,
-      win: `BRILLANT ! 🌟 Tu as réussi, ${mockProfile.name} !`,
-      fail: `Bon essai, ${mockProfile.name} ! La prochaine fois, regarde bien le motif étape par étape. Tu vas y arriver !`,
+      intro: `Bienvenue à l'Académie Alien, ${profile.name} ! Regarde bien et trouve la réponse. Tu as 3 minutes, mais pas de stress, amuse-toi bien !`,
+      win: `BRILLANT ! 🌟 Tu as réussi, ${profile.name} !`,
+      fail: `Bon essai, ${profile.name} ! La prochaine fois, regarde bien le motif étape par étape. Tu vas y arriver !`,
     },
     ar: {
       timer: "الوقت المتبقي",
       academy: "أكاديمية الكائنات فضائية",
       back: "العودة للمركز",
-      intro: `مرحباً بك في أكاديمية الفضاء يا ${mockProfile.name}! انظر جيداً وجد الإجابة. لديك 3 دقائق، لكن لا داعي للقلق، استمتع بوقتك!`,
-      win: `عبقري! 🌟 لقد فعلتها يا ${mockProfile.name}!`,
-      fail: `محاولة جيدة يا ${mockProfile.name}! في المرة القادمة، انظر إلى النمط خطوة بخطوة. ستنجح بالتأكيد!`,
+      intro: `مرحباً بك في أكاديمية الفضاء يا ${profile.name}! انظر جيداً وجد الإجابة. لديك 3 دقائق، لكن لا داعي للقلق، استمتع بوقتك!`,
+      win: `عبقري! 🌟 لقد فعلتها يا ${profile.name}!`,
+      fail: `محاولة جيدة يا ${profile.name}! في المرة القادمة، انظر إلى النمط خطوة بخطوة. ستنجح بالتأكيد!`,
     }
-  }[mockProfile.language];
+  }[profile.language];
 
   useEffect(() => {
-    const pool = LOGIC_PUZZLES[mockProfile.difficulty];
+    const pool = LOGIC_PUZZLES[profile.difficulty];
     setPuzzle(pool[Math.floor(Math.random() * pool.length)]);
 
     // Auto-advance past intro after 3 s
@@ -74,6 +73,9 @@ export default function LogicActivity() {
       if (timerRef.current) clearInterval(timerRef.current);
       setStatus("success");
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      const ability = Math.max(2, 10 - (attempts) * 2);
+      const engagement = Math.max(0, 10 - Math.floor(hesitationCount / 60));
+      completeActivity("logic", ability, engagement, t.win);
       await submitScore(true);
     } else {
       // Re-trigger visual feedback but don't end game
@@ -100,13 +102,16 @@ export default function LogicActivity() {
   };
 
   useEffect(() => {
-    if (status === "timeout") submitScore(false);
+    if (status === "timeout") {
+      completeActivity("logic", 0, 5, t.fail);
+      submitScore(false);
+    }
   }, [status]);
 
   return (
     <div 
       className="min-h-screen w-full overflow-hidden flex flex-col p-6 font-baloo relative"
-      style={{ backgroundColor: "#D6F5DC", direction: mockProfile.language === "ar" ? "rtl" : "ltr" }}
+      style={{ backgroundColor: "#D6F5DC", direction: profile.language === "ar" ? "rtl" : "ltr" }}
       onMouseMove={() => setHesitationCount(prev => prev + 1)}
     >
       {/* Background Decorative Elements */}
@@ -119,9 +124,9 @@ export default function LogicActivity() {
       {/* Header */}
       <div className="flex justify-between items-center z-10 bg-white/30 p-4 rounded-3xl backdrop-blur-sm shadow-sm">
         <div>
-          <h1 className="text-2xl font-fredoka text-slate-700">{mockProfile.name}</h1>
+          <h1 className="text-2xl font-fredoka text-slate-700">{profile.name}</h1>
           <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-sm font-bold uppercase tracking-widest">
-            {mockProfile.difficulty}
+            {profile.difficulty}
           </span>
         </div>
         <div className="text-center">
@@ -143,7 +148,7 @@ export default function LogicActivity() {
               className="bg-white/80 p-8 rounded-[40px] shadow-2xl border-8 border-emerald-200 max-w-2xl w-full text-center"
             >
               <h2 className="text-3xl font-fredoka text-emerald-800 mb-8">
-                {puzzle?.question[mockProfile.language]}
+                {puzzle?.question[profile.language]}
               </h2>
 
               <div className="flex flex-wrap justify-center gap-4 mb-12">
@@ -181,7 +186,7 @@ export default function LogicActivity() {
                 {status === "success" ? t.win : t.fail}
               </h2>
               <Button 
-                onClick={() => router.push("/hub")}
+                onClick={() => router.push("/planet")}
                 className="px-12 py-8 text-2xl rounded-full bg-indigo-600 hover:bg-indigo-700 font-fredoka shadow-xl"
               >
                 {t.back}
@@ -196,7 +201,7 @@ export default function LogicActivity() {
         <Astraubot
           message={status === "success" ? t.win : status === "timeout" ? t.fail : t.intro}
           size="md"
-          language={mockProfile.language}
+          language={profile.language}
         />
       </div>
       

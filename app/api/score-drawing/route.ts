@@ -1,71 +1,49 @@
-//app\api\score-drawing\route.ts
-import { Anthropic } from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || "",
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 export async function POST(req: Request) {
   try {
     const { drawing, reference, difficulty, age, engagement } = await req.json();
+    const base64Data = drawing.split(",")[1];
 
-    // Remove the data:image/png;base64, prefix
-    const base64Data = drawing.split(',')[1];
+    const prompt = `You are an encouraging AI art teacher for children.
+A child aged ${age} (difficulty: ${difficulty}) drew an image attempting to copy a "${reference}".
 
-    const prompt = `You are an encouraging AI art teacher for children. 
-    A child aged ${age} (Difficulty: ${difficulty}) drew an image attempting to copy a "${reference}".
-    
-    Technical engagement signals: 
-    - Strokes: ${engagement.strokes}
-    - Colors used: ${engagement.colorsUsed}
-    - Time spent: ${engagement.timeSpent} seconds
-    
-    Analyze the attached drawing. Be extremely generous and positive. 
-    Return ONLY a JSON object with:
-    {
-      "similarity": number (0-10),
-      "color_accuracy": number (0-10),
-      "creativity": number (0-10),
-      "feedback": "A short encouraging sentence in French/Arabic style (provide both)",
-      "parentNotes": "Detailed analysis of fine motor skills or creativity",
-      "improvementTip": "One tiny friendly thing to try next time"
-    }`;
+Technical engagement: strokes=${engagement.strokes}, colors used=${engagement.colorsUsed}, time=${engagement.timeSpent}s
 
-    const message = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20240620",
-      max_tokens: 1000,
-      messages: [
+Analyze the drawing. Be extremely generous and positive. Return ONLY valid JSON:
+{
+  "similarity": <number 0-10>,
+  "color_accuracy": <number 0-10>,
+  "creativity": <number 0-10>,
+  "feedback": "<short encouraging sentence in French>",
+  "improvementTip": "<one tiny friendly tip for next time in French>"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [
         {
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: prompt,
-            },
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: "image/png",
-                data: base64Data,
-              },
-            },
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: "image/png", data: base64Data } },
           ],
         },
       ],
     });
 
-    const contentBlock = message.content[0];
+    const raw = (response.text ?? "")
+      .replace(/```json\s*/gi, "")
+      .replace(/```/g, "")
+      .trim();
 
-    if (contentBlock.type !== "text") {
-      throw new Error("Response is not text");
-    }
-
-    const result = JSON.parse(contentBlock.text);
+    const result = JSON.parse(raw);
     return NextResponse.json(result);
   } catch (error) {
-    console.error("AI Scoring Error:", error);
-    return NextResponse.json({ error: "Failed to score" }, { status: 500 });
+    console.error("Drawing score error:", error);
+    return NextResponse.json({ error: "Failed to score drawing" }, { status: 500 });
   }
 }

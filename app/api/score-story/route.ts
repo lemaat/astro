@@ -1,59 +1,64 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
-import OpenAI from 'openai';
+import { GoogleGenAI } from "@google/genai";
+import { NextRequest, NextResponse } from "next/server";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const audioFile = formData.get('audio') as File;
-    const promptText = formData.get('promptText') as string;
-    const age = formData.get('age') as string;
-    const childName = formData.get('name') as string;
+    const audioFile = formData.get("audio") as File;
+    const mimeType = (formData.get("mimeType") as string) || "audio/webm";
+    const promptText = formData.get("promptText") as string;
+    const age = formData.get("age") as string;
+    const childName = formData.get("name") as string;
 
-    // 1. Transcribe with Whisper
-    const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: "whisper-1",
-    });
+    // Convert audio to base64
+    const arrayBuffer = await audioFile.arrayBuffer();
+    const base64Audio = Buffer.from(arrayBuffer).toString("base64");
 
-    const transcript = transcription.text;
+    const prompt = `You are Astraubot, a friendly AI space companion for children.
 
-    if (!transcript || transcript.length < 5) {
-      return NextResponse.json({ error: "Empty story" }, { status: 400 });
-    }
+A child named ${childName} aged ${age} was asked to tell a story about: "${promptText}"
 
-    // 2. Analyze with Claude
-    const response = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 1000,
-      system: "You are Astraubot, a friendly AI space companion for children. Analyze their story. Be extremely encouraging. Return ONLY valid JSON.",
-      messages: [
+First, transcribe the audio. Then analyze the story.
+Return ONLY valid JSON:
+{
+  "transcript": "<full transcription of what was said>",
+  "narrative_structure": <0-10>,
+  "imagination": <0-10>,
+  "vocabulary": <0-10>,
+  "coherence": <0-10>,
+  "emotional_expression": <0-10>,
+  "standout_moment": "<one short quoted creative line from their story>",
+  "feedback": "<warm encouraging spoken-style message to the child in French>",
+  "tip": "<one friendly suggestion for next time in French>"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [
         {
           role: "user",
-          content: `A child aged ${age} was given this prompt: '${promptText}'. 
-          They told this story: '${transcript}'. 
-          Analyze it and return a JSON object with:
-          - narrative_structure (0-10)
-          - imagination (0-10)
-          - vocabulary (0-10)
-          - coherence (0-10)
-          - emotional_expression (0-10)
-          - standout_moment: ONE quoted short line from their transcript that is creative.
-          - feedback: A short, warm, spoken-style message to the child in French or Arabic (matching the prompt language).
-          - tip: ONE friendly suggestion for next time.`
-        }
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: base64Audio } },
+          ],
+        },
       ],
     });
 
-    const analysis = JSON.parse((response.content[0] as any).text);
+    const raw = (response.text ?? "")
+      .replace(/```json\s*/gi, "")
+      .replace(/```/g, "")
+      .trim();
 
-    return NextResponse.json({
-      transcript,
-      ...analysis
-    });
+    const analysis = JSON.parse(raw);
+
+    if (!analysis.transcript || analysis.transcript.length < 3) {
+      return NextResponse.json({ error: "Empty story" }, { status: 400 });
+    }
+
+    return NextResponse.json(analysis);
   } catch (error) {
     console.error("Story analysis error:", error);
     return NextResponse.json({ error: "Failed to process story" }, { status: 500 });

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useProfile } from '@/context/AstroContext'; // Assuming context exists
+import { useProfile, useAstro } from '@/context/AstroContext';
 import Astraubot from '@/components/Astrobot';
 import { STORY_PROMPTS, UI_STRINGS } from '@/lib/story-data';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import confetti from 'canvas-confetti';
 import Link from 'next/link';
 
 export default function StorytellingPage() {
-  const { profile } = useProfile(); // { name, age, difficulty, language }
+  const { profile } = useProfile();
+  const { completeActivity } = useAstro();
   const [step, setStep] = useState<'selecting' | 'recording' | 'processing' | 'results'>('selecting');
   const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -48,20 +49,36 @@ export default function StorytellingPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/mp4';
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (e) => chunksRef.current.push(e.data);
-      mediaRecorder.onstop = () => processAudio(new Blob(chunksRef.current, { type: 'audio/webm' }));
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        processAudio(new Blob(chunksRef.current, { type: mimeType }), mimeType);
+      };
 
-      mediaRecorder.start();
+      mediaRecorder.start(100); // collect chunks every 100ms
       setIsRecording(true);
 
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
-            stopRecording();
+            // Use ref state to avoid stale closure
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+              mediaRecorderRef.current.stop();
+              setIsRecording(false);
+              setStep('processing');
+            }
+            if (timerRef.current) clearInterval(timerRef.current);
             return 0;
           }
           return prev - 1;
@@ -73,7 +90,7 @@ export default function StorytellingPage() {
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       if (timerRef.current) clearInterval(timerRef.current);
@@ -82,9 +99,10 @@ export default function StorytellingPage() {
     }
   };
 
-  const processAudio = async (blob: Blob) => {
+  const processAudio = async (blob: Blob, mimeType: string) => {
     const formData = new FormData();
     formData.append('audio', blob, 'story.webm');
+    formData.append('mimeType', mimeType);
     formData.append('promptText', selectedPrompt.text[profile.language]);
     formData.append('age', profile.age.toString());
     formData.append('name', profile.name);
@@ -99,6 +117,8 @@ export default function StorytellingPage() {
       setStep('results');
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
       setBotMessage(data.feedback);
+      const ability = Math.round(((data.narrative_structure ?? 5) + (data.imagination ?? 5) + (data.vocabulary ?? 5) + (data.coherence ?? 5) + (data.emotional_expression ?? 5)) / 5);
+      completeActivity("storytelling", ability, 8, data.feedback ?? "");
     } catch (e) {
       setStep('results');
       setAnalysis({ error: true });
@@ -112,7 +132,7 @@ export default function StorytellingPage() {
 
       {/* Header */}
       <header className="flex justify-between items-center max-w-6xl mx-auto mb-8 relative z-10">
-        <Link href="/planet-hub">
+        <Link href="/planet">
           <Button variant="ghost" className="rounded-full bg-white/50 hover:bg-white">
             <ArrowLeft className="mr-2 h-5 w-5" /> {t.backToHub}
           </Button>
@@ -244,7 +264,7 @@ export default function StorytellingPage() {
                 >
                   {t.tryAgain}
                 </Button>
-                <Link href="/planet-hub">
+                <Link href="/planet">
                   <Button className="bg-[#6B4EE6] text-white px-8 py-6 rounded-full text-xl shadow-lg hover:bg-[#5A3DD3]">
                     {t.backToHub}
                   </Button>
